@@ -1,8 +1,14 @@
-const puppeteer = require('puppeteer');
-const utils = require('./utils');
-const { URL } = require('url')
+const puppeteer = require('puppeteer')
+const utils = require('./utils')
+
 
 const pageURL = process.argv[2]
+
+process.on('unhandledRejection', (err) => {  
+  console.error("Unhandled Rejection")
+  console.error(err)
+  process.exit(1)
+})
 
 if (!pageURL) {
   console.log("Please specify a URL.")
@@ -19,15 +25,7 @@ if (!pageURL) {
   const finished = []
 
   page.on('request', req => {
-
-    requests.push({
-      headers: req.headers,
-      ok: req.ok,
-      url: req.url,
-      type: req.resourceType,
-      method: req.method,
-    })
-
+    requests.push(req)
   })
 
   page.on('requestfinished', req => {
@@ -35,76 +33,66 @@ if (!pageURL) {
   })
 
   page.on('response', (res) => {
-    responses.push({
-      status: res.status,
-      url: res.url,
-      ok: res.ok,
-      headers: res.headers,
-      request: res.request(),
-    })
+    responses.push(res)
   })
 
+  const networkTimeout = 1000
+  const startTime = +(new Date())
   await page.goto(pageURL, {
     waitUntil: 'networkidle',
-    networkIdleTimeout: 5000,
+    networkIdleTimeout: networkTimeout,
   });
+
+  const duration = (+(new Date()) - networkTimeout - startTime) / 1000 + ' s'
+
   const cookies = await page.cookies()
 
-  const summaries = utils.TYPES.map(type => {
+  const typeSummaries = await Promise.all(utils.TYPES.map(async type => {
     const rs = responses.filter(r => utils.inferType(r) === type) 
+    const totalSize = await utils.getTotalHumanSize(rs)
     return {
       type: type,
-      size: utils.getTotalHumanSize(rs),
+      size: totalSize,
       count: rs.length,
-      summary: rs.reduce((agg, r) => {
-        return agg + `${r.url} - [${r.status}] - ${r.headers['content-length'] || '---'}\n` 
-      }, '')
+      text: await rs.reduce(async (agg, r) => {
+        const size = await utils.getResponseSize(r)
+        return await agg + `${r.url} - [${r.status}] - ${size}\n` 
+      }, Promise.resolve(''))
     }
-    
-  })
+  }))
 
-  const cookieSummary = cookies.reduce((agg, cookie) => {
-    return agg + `[${cookie.domain}] ${cookie.name}: ${cookie.value}\n`
-  }, '')
-  
-  const statusCodeSummary = responses.reduce((obj, response) => {
-    const existing = obj[response.status] || 0
-    obj[response.status] = existing + 1
-    return obj
-  }, {})
+  const cookieSummary = utils.getCookieSummary(cookies)
+  const statusCodeSummary = utils.getStatusCodeSummary(responses)
+  const hostSummary = utils.getHostSummary(responses)
 
-  const hostSummary = responses.reduce((obj, response) => {
-    const u = new URL(response.url)
-    const host = u.hostname
-    if (!host) return obj
-    const existing = obj[host] || 0
-    obj[host] = existing + 1
-    return obj
-  }, {})
+  const totalSize = await utils.getTotalHumanSize(responses)
 
   console.log("Summary\n-------\n")
-  console.log("Cookies", cookies.length)
-  console.log("Requests", requests.length)
-  console.log("Responses", responses.length)
-  console.log("Total Size", utils.getTotalHumanSize(responses))
+  console.log("Load time", duration)
+  console.log("# Cookies", cookies.length)
+  console.log("# Requests", requests.length)
+  console.log("# Responses", responses.length)
+  console.log("Total Size", totalSize)
   console.log("\n-------\n")
 
   console.log(`### Requests per Host (${Object.keys(hostSummary).length}) ###\n`)
-  console.log(utils.formatObject(hostSummary))
+  console.log(hostSummary)
   console.log()
 
   console.log("### Status Codes ###\n")
-  console.log(utils.formatObject(statusCodeSummary))
+  console.log(statusCodeSummary)
   console.log()
 
   console.log(`### Cookies (${cookies.length}) ###\n`)
   console.log(cookieSummary)
   console.log()
 
-  summaries.forEach(s => {
-    if (!s.summary) return
-    console.log(`### ${s.type} (${s.count}) ###\n\n${s.summary}\nSize: ${s.size}\n\n`)
+  typeSummaries.forEach(s => {
+    if (!s.text) return
+    console.log(`### ${s.type} (${s.count}) ###\n\n${s.text}\nSize: ${s.size}\n\n`)
   })
-  browser.close();
+
+
+  await browser.close()
 
 })()
