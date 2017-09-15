@@ -1,0 +1,12 @@
+{
+  "name": "webpagetest",
+  "version": "0.0.1",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "puppeteer": "^0.10.2"
+  },
+  "scripts": {
+  	"test": "node test.js"
+  }
+}
