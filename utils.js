@@ -94,10 +94,25 @@ function getCookieSummary(cookies) {
   }, '')
 }
 
+function getTypeSummaries(responses) {
+  return Promise.all(TYPES.map(async type => {
+    const rs = responses.filter(r => inferType(r) === type)
+    const totalSize = await getTotalHumanSize(rs)
+    return {
+      type: type,
+      size: totalSize,
+      count: rs.length,
+      text: await rs.reduce(async (agg, r) => {
+        const size = await getResponseSize(r)
+        return await agg + `${r.url} - [${r.status}] - ${size}\n`
+      }, Promise.resolve(''))
+    }
+  }))
+}
+
 module.exports = {
-  TYPES,
   typeFromUrl,
-  inferType,
+  getTypeSummaries,
   getTotalSize,
   humanSize,
   getTotalHumanSize,

@@ -47,20 +47,7 @@ if (!pageURL) {
 
   const cookies = await page.cookies()
 
-  const typeSummaries = await Promise.all(utils.TYPES.map(async type => {
-    const rs = responses.filter(r => utils.inferType(r) === type) 
-    const totalSize = await utils.getTotalHumanSize(rs)
-    return {
-      type: type,
-      size: totalSize,
-      count: rs.length,
-      text: await rs.reduce(async (agg, r) => {
-        const size = await utils.getResponseSize(r)
-        return await agg + `${r.url} - [${r.status}] - ${size}\n` 
-      }, Promise.resolve(''))
-    }
-  }))
-
+  const typeSummaries = await utils.getTypeSummaries(responses)
   const cookieSummary = utils.getCookieSummary(cookies)
   const statusCodeSummary = utils.getStatusCodeSummary(responses)
   const hostSummary = utils.getHostSummary(responses)
