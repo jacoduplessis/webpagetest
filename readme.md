@@ -1,5 +1,7 @@
 # webpagetest
 
+![build status](https://travis-ci.org/jacoduplessis/webpagetest.svg?branch=master)
+
 A script to use headless chrome to analyze a page.
 
 ```
