@@ -19,13 +19,12 @@ https://github.com/GoogleChrome/puppeteer/issues/734
 
 ### TODO
 
-- load time
-- response codes
+**display**
 - content size & requests by domain
 - percentages
 - requests flow chart
 
+**features**
 - cold cache vs reload
-- locations
 - data usage when page remains open
 - load as mobile device
