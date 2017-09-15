@@ -20,15 +20,18 @@ function typeFromUrl(url) {
 }
 
 function inferType(response) {
-  return typeFromUrl(response.url) || response.request.resourceType
+  const type = response.request().resourceType
+  // only try to infer type if 'Other' reported
+  if (type === 'Other') return typeFromUrl(response.url) || "Other"
+  return type
 }
 
 async function getTotalSize(responses) {
-  const size = await responses.reduce(async (agg, r) => {
+  return await responses.reduce(async (agg, r) => {
     const size = await getResponseSize(r)
     return await agg + parseInt(size)
   }, Promise.resolve(0))
-  return size
+
 }
 
 async function getTotalHumanSize(responses) {
