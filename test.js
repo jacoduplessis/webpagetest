@@ -1,7 +1,7 @@
 const utils = require('./utils')
 const { runner, assertEquals } = require('./test-runner')
 
-runner();
+runner()
 
 test('plain css extension', () => {
 	assertEquals(utils.typeFromUrl('test.css'), 'Stylesheet')
