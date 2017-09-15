@@ -2,6 +2,12 @@
 
 A script to use headless chrome to analyze a page.
 
+```
+node index.js http://www.example.com
+```
+
+You need a recent version of Node.
+
 ### Notes
 
 There is some code to infer content type from extension 
