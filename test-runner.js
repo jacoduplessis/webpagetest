@@ -24,7 +24,7 @@ test('1+2 equals 3', function (done) {
 
 function runner () {
   // The test queue:
-  var tests = [];
+  const tests = [];
 
   // Function to add tests:
   this.test = function test (name, cb) {
@@ -32,7 +32,7 @@ function runner () {
   };
 
   this.run = function run () {
-    var i = 0, testToRun;
+    let i = 0, testToRun;
     (function next (err) {
       // Log status for last test run:
       if (testToRun) console[err ? 'error' : 'log'](err ? '✘' : '✔', testToRun.name);
@@ -54,10 +54,9 @@ function runner () {
     }
   };
   
-  this.autoRun = true;
-  
+
   setTimeout(function () {
-    if (autoRun) run();
+    run();
   }, 1);
 
 }
