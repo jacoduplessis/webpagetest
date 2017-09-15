@@ -19,8 +19,6 @@ if (!pageURL) {
   const finished = []
 
   page.on('request', req => {
-    // const buffer = await req.buffer();
-    // const size = buffer.byteLength;
 
     requests.push({
       headers: req.headers,
@@ -29,7 +27,7 @@ if (!pageURL) {
       type: req.resourceType,
       method: req.method,
     })
-    // requests.push(Object.assign({}, req, {size}));
+
   })
 
   page.on('requestfinished', req => {
@@ -52,13 +50,11 @@ if (!pageURL) {
   });
   const cookies = await page.cookies()
 
-  const size = utils.getTotalSize(responses)
-
   const summaries = utils.TYPES.map(type => {
     const rs = responses.filter(r => utils.inferType(r) === type) 
     return {
       type: type,
-      size: utils.getTotalSize(rs),
+      size: utils.getTotalHumanSize(rs),
       count: rs.length,
       summary: rs.reduce((agg, r) => {
         return agg + `${r.url} - [${r.status}] - ${r.headers['content-length'] || '---'}\n` 
@@ -68,7 +64,7 @@ if (!pageURL) {
   })
 
   const cookieSummary = cookies.reduce((agg, cookie) => {
-    return agg + `${cookie.name}: ${cookie.value}\n`
+    return agg + `[${cookie.domain}] ${cookie.name}: ${cookie.value}\n`
   }, '')
   
   const statusCodeSummary = responses.reduce((obj, response) => {
@@ -80,6 +76,7 @@ if (!pageURL) {
   const hostSummary = responses.reduce((obj, response) => {
     const u = new URL(response.url)
     const host = u.hostname
+    if (!host) return obj
     const existing = obj[host] || 0
     obj[host] = existing + 1
     return obj
@@ -89,10 +86,10 @@ if (!pageURL) {
   console.log("Cookies", cookies.length)
   console.log("Requests", requests.length)
   console.log("Responses", responses.length)
-  console.log("Total Size", size / 1000 / 1000, "Mb")
+  console.log("Total Size", utils.getTotalHumanSize(responses))
   console.log("\n-------\n")
 
-  console.log("### Requests per Host ###\n")
+  console.log(`### Requests per Host (${Object.keys(hostSummary).length}) ###\n`)
   console.log(utils.formatObject(hostSummary))
   console.log()
 

@@ -27,8 +27,23 @@ function getTotalSize(responses) {
   }, 0)
 }
 
+function getTotalHumanSize(responses) {
+  return humanSize(getTotalSize(responses))
+}
+
+
 function formatObject(obj) {
   return Object.keys(obj).reduce((agg, key) => agg + `${key} - ${obj[key]}\n`,'');
+}
+
+function humanSize(bytes) {
+  if (bytes < 1000) return `${bytes} b`
+  bytes /= 1000
+  if (bytes < 1000) return `${bytes.toFixed(2)} kb`
+  bytes /= 1000
+  if (bytes < 1000) return `${bytes.toFixed(2)} mb`
+  bytes /= 1000
+  if (bytes < 1000) return `${bytes.toFixed(2)} gb`
 }
 
 module.exports = {
@@ -36,5 +51,7 @@ module.exports = {
   typeFromUrl,
   inferType,
   getTotalSize,
-  formatObject
+  formatObject,
+  humanSize,
+  getTotalHumanSize,
 }

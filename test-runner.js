@@ -21,7 +21,7 @@ test('1+2 equals 3', function (done) {
 
  */
 
- 
+
 function runner () {
   // The test queue:
   var tests = [];
@@ -62,8 +62,9 @@ function runner () {
 
 }
 
-function assert(condition, message) {
-  if (!condition) throw new Error(message);
+
+function assertEquals(a, b) {
+	if (a !== b) throw new Error(a + " !== " + b ) 
 }
 
-module.exports = { runner, assert };
+module.exports = { runner, assertEquals };
