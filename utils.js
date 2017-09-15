@@ -1,3 +1,5 @@
+const { URL } = require('url')
+
 const TYPES = ["Document","Stylesheet","Image","Media","Font","Script","TextTrack","XHR","Fetch","EventSource","WebSocket","Manifest","Other"]
 
 function typeFromUrl(url) {
@@ -21,14 +23,17 @@ function inferType(response) {
   return typeFromUrl(response.url) || response.request.resourceType
 }
 
-function getTotalSize(responses) {
-  return responses.reduce((agg, r) => {
-    return agg + parseInt(r.headers['content-length'] || 0)
-  }, 0)
+async function getTotalSize(responses) {
+  const size = await responses.reduce(async (agg, r) => {
+    const size = await getResponseSize(r)
+    return await agg + parseInt(size)
+  }, Promise.resolve(0))
+  return size
 }
 
-function getTotalHumanSize(responses) {
-  return humanSize(getTotalSize(responses))
+async function getTotalHumanSize(responses) {
+  const size = await getTotalSize(responses)  
+  return humanSize(size)
 }
 
 
@@ -46,12 +51,57 @@ function humanSize(bytes) {
   if (bytes < 1000) return `${bytes.toFixed(2)} gb`
 }
 
+async function getResponseSize(response) {
+  const size = response.headers['content-length']
+  if (size) return size
+  const buffer = await response.buffer()
+  return buffer.byteLength
+}
+
+function getStatusCodeObject(responses) {
+  return responses.reduce((obj, response) => {
+    const existing = obj[response.status] || 0
+    obj[response.status] = existing + 1
+    return obj
+  }, {})
+}
+
+function getStatusCodeSummary(responses) {
+  return formatObject(getStatusCodeObject(responses))
+}
+
+function getHostObject(responses) {
+  return responses.reduce((obj, response) => {
+    const u = new URL(response.url)
+    const host = u.hostname
+    if (!host) return obj
+    const existing = obj[host] || 0
+    obj[host] = existing + 1
+    return obj
+  }, {})
+}
+
+function getHostSummary(responses) {
+  return formatObject(getHostObject(responses))
+}
+
+function getCookieSummary(cookies) {
+  return cookies.reduce((agg, cookie) => {
+    return agg + `[${cookie.domain}] ${cookie.name}: ${cookie.value}\n`
+  }, '')
+}
+
 module.exports = {
   TYPES,
   typeFromUrl,
   inferType,
   getTotalSize,
-  formatObject,
   humanSize,
   getTotalHumanSize,
+  getResponseSize,
+  getStatusCodeSummary,
+  getStatusCodeObject,
+  getHostSummary,
+  getHostObject,
+  getCookieSummary,
 }
