@@ -1,6 +1,8 @@
 const puppeteer = require('puppeteer')
 const utils = require('./utils')
-
+const Wappalyzer = require('./wappalyzer')
+const { URL } = require('url')
+const apps = require('./apps')
 
 const pageURL = process.argv[2]
 
@@ -39,20 +41,24 @@ if (!pageURL) {
   const networkTimeout = 1000
   const startTime = +(new Date())
   await page.goto(pageURL, {
-    waitUntil: 'networkidle',
+    waitUntil: 'load', // networkidle
     networkIdleTimeout: networkTimeout,
+    timeout: 60000,
   });
 
-  const duration = (+(new Date()) - networkTimeout - startTime) / 1000 + ' s'
+  // console.log("Loaded")
+  // console.log(await page.title())
 
+  // TODO: if waitUntil === 'networkidle', subtract networTimeout from response time
+  const duration = (+(new Date()) - startTime) / 1000 + ' s'
+
+  const totalSize = await utils.getTotalHumanSize(responses)
   const cookies = await page.cookies()
-
-  const typeSummaries = await utils.getTypeSummaries(responses)
+  const typeSummaries = await utils.getTypeSummaries(utils.TYPES, responses)
   const cookieSummary = utils.getCookieSummary(cookies)
   const statusCodeSummary = utils.getStatusCodeSummary(responses)
   const hostSummary = utils.getHostSummary(responses)
 
-  const totalSize = await utils.getTotalHumanSize(responses)
 
   console.log("Summary\n-------\n")
   console.log("Load time", duration)
@@ -62,7 +68,7 @@ if (!pageURL) {
   console.log("Total Size", totalSize)
   console.log("\n-------\n")
 
-  console.log(`### Requests per Host (${Object.keys(hostSummary).length}) ###\n`)
+  console.log(`### Requests per Host ###\n`)
   console.log(hostSummary)
   console.log()
 
@@ -79,7 +85,21 @@ if (!pageURL) {
     console.log(`### ${s.type} (${s.count}) ###\n\n${s.text}\nSize: ${s.size}\n\n`)
   })
 
-
+  console.log("### Wappalyzer ###\n")
+  const wappalyzer = new Wappalyzer()
+  wappalyzer.apps = apps.apps;
+  wappalyzer.categories = apps.categories;
+  const wurl = new URL(pageURL)
+  const h = wurl.hostname
+  const html = await page.content()
+  const headers = responses.filter(r => r.status === 200)[0].headers  
+  const detected = wappalyzer.analyze(h, pageURL, {headers, html})
+  Object.keys(detected).forEach(d => {
+    
+    console.log(d)
+  })
+  console.log()
+  console.log(JSON.stringify(detected))
   await browser.close()
 
 })()

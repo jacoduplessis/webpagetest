@@ -1,6 +1,6 @@
-const { URL } = require('url')
+const {URL} = require('url')
 
-const TYPES = ["Document","Stylesheet","Image","Media","Font","Script","TextTrack","XHR","Fetch","EventSource","WebSocket","Manifest","Other"]
+const TYPES = ["Document", "Stylesheet", "Image", "Media", "Font", "Script", "TextTrack", "XHR", "Fetch", "EventSource", "WebSocket", "Manifest", "Other"]
 
 function typeFromUrl(url) {
   const ext = url.split('?')[0].split('.').reverse()[0].toLowerCase();
@@ -27,21 +27,26 @@ function inferType(response) {
 }
 
 async function getTotalSize(responses) {
-  return await responses.reduce(async (agg, r) => {
+  if (responses.length === 0) return 0
+  return responses.reduce(async (agg, r) => {
     const size = await getResponseSize(r)
     return await agg + parseInt(size)
   }, Promise.resolve(0))
-
 }
 
 async function getTotalHumanSize(responses) {
-  const size = await getTotalSize(responses)  
+  let size = await getTotalSize(responses)
+
+  if (typeof size === 'undefined') {
+    console.warn("Error retrieving response sizes, setting to 0")
+    size = 0
+  }
   return humanSize(size)
 }
 
 
 function formatObject(obj) {
-  return Object.keys(obj).reduce((agg, key) => agg + `${key} - ${obj[key]}\n`,'');
+  return Object.keys(obj).reduce((agg, key) => agg + `${key} - ${obj[key]}\n`, '');
 }
 
 function humanSize(bytes) {
@@ -56,9 +61,13 @@ function humanSize(bytes) {
 
 async function getResponseSize(response) {
   const size = response.headers['content-length']
-  if (size) return size
+  if (typeof size !== 'undefined') return size
+
   const buffer = await response.buffer()
-  return buffer.byteLength
+  const bufferSize = buffer.byteLength
+
+  if (!bufferSize) throw new Error("Could not get size of response", response)
+  return bufferSize
 }
 
 function getStatusCodeObject(responses) {
@@ -94,24 +103,34 @@ function getCookieSummary(cookies) {
   }, '')
 }
 
-function getTypeSummaries(responses) {
-  return Promise.all(TYPES.map(async type => {
-    const rs = responses.filter(r => inferType(r) === type)
-    const totalSize = await getTotalHumanSize(rs)
-    return {
-      type: type,
-      size: totalSize,
-      count: rs.length,
-      text: await rs.reduce(async (agg, r) => {
-        const size = await getResponseSize(r)
-        return await agg + `${r.url} - [${r.status}] - ${size}\n`
-      }, Promise.resolve(''))
-    }
+async function getTypeSummary(type, responses) {
+
+  const totalSize = await getTotalHumanSize(responses)
+  const text = await responses.reduce(async (agg, r) => {
+    const size = await getResponseSize(r)
+    return await agg + `${r.url} - [${r.status}] - ${size}\n`
+  }, Promise.resolve(''))
+
+  return {
+    type,
+    text,
+    size: totalSize,
+    count: responses.length,
+  }
+}
+
+function getTypeSummaries(types, responses) {
+
+  return Promise.all(types.map(async type => {
+    const filteredResponses = responses.filter(r => inferType(r) === type)
+    return await getTypeSummary(type, filteredResponses)
   }))
 }
 
 module.exports = {
+  TYPES,
   typeFromUrl,
+  getTypeSummary,
   getTypeSummaries,
   getTotalSize,
   humanSize,

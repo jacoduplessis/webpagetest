@@ -63,7 +63,7 @@ function runner () {
 
 
 function assertEquals(a, b) {
-	if (a !== b) throw new Error(a + " !== " + b ) 
+	if (a !== b) throw new Error("Assertion Error: " + a + " !== " + b )
 }
 
 module.exports = { runner, assertEquals };

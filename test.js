@@ -63,7 +63,7 @@ test('get response size from buffer', async (done) => {
 	done()
 })
 
-test('get total size with buffers and headers', async(done) => {
+test('get total size with buffers and headers', async (done) => {
 	const responses = [
 		{headers: {'content-length': 10}},
 		{headers: {'content-length': 20}},
@@ -117,4 +117,33 @@ test('status code object', () => {
 	}
 	assertEquals(JSON.stringify(obj), JSON.stringify(expected))
 
+})
+
+test('single type summary', async (done) => {
+  const responses = [
+		{url: 'style.css', status: 200, headers: {'content-length': 10}},
+		{url: 'custom.css', status: 300, headers: {'content-length': 20}},
+		{url: 'bootstrap.css', status: 400, headers: {}, buffer() { return Promise.resolve(new Buffer(50))}},
+	]
+  const type = 'Stylesheet'
+  const summary = await utils.getTypeSummary(type, responses)
+  const expected = {
+    type,
+    text: `style.css - [200] - 10\ncustom.css - [300] - 20\nbootstrap.css - [400] - 50\n`,
+    size: '80 b',
+    count: 3,
+  }
+  assertEquals(summary.type, expected.type)
+  assertEquals(summary.text, expected.text)
+  assertEquals(summary.size, expected.size)
+  assertEquals(summary.count, expected.count)
+  done()
+})
+
+test('combined type summaries', async (done) => {
+
+  const responses = []
+  const summaries = await utils.getTypeSummaries(utils.TYPES, responses)
+  assertEquals(Array.isArray(summaries), true)
+  done()
 })
