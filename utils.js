@@ -26,25 +26,6 @@ function inferType(response) {
   return type
 }
 
-async function getTotalSize(responses) {
-  if (responses.length === 0) return 0
-  return responses.reduce(async (agg, r) => {
-    const size = await getResponseSize(r)
-    return await agg + parseInt(size)
-  }, Promise.resolve(0))
-}
-
-async function getTotalHumanSize(responses) {
-  let size = await getTotalSize(responses)
-
-  if (typeof size === 'undefined') {
-    console.warn("Error retrieving response sizes, setting to 0")
-    size = 0
-  }
-  return humanSize(size)
-}
-
-
 function formatObject(obj) {
   return Object.keys(obj).reduce((agg, key) => agg + `${key} - ${obj[key]}\n`, '');
 }
@@ -62,12 +43,7 @@ function humanSize(bytes) {
 async function getResponseSize(response) {
   const size = response.headers['content-length']
   if (typeof size !== 'undefined') return size
-
-  const buffer = await response.buffer()
-  const bufferSize = buffer.byteLength
-
-  if (!bufferSize) throw new Error("Could not get size of response", response)
-  return bufferSize
+  return await response.encodedDataLength()
 }
 
 function getStatusCodeObject(responses) {
@@ -103,13 +79,23 @@ function getCookieSummary(cookies) {
   }, '')
 }
 
+async function parseTypeResponses(responses) {
+
+  return Promise.all(responses.map(async r => {
+    const bytes = await getResponseSize(r)
+    const size = parseInt(bytes)
+    return Object.assign(r, {size})
+  }))
+
+}
+
 async function getTypeSummary(type, responses) {
 
-  const totalSize = await getTotalHumanSize(responses)
-  const text = await responses.reduce(async (agg, r) => {
-    const size = await getResponseSize(r)
-    return await agg + `${r.url} - [${r.status}] - ${size}\n`
-  }, Promise.resolve(''))
+  const parsedResponses = await parseTypeResponses(responses)
+  const totalSize = parsedResponses.reduce((agg, r) => agg + r.size, 0)
+  const text = responses.reduce((agg, r) => {
+    return agg + `${r.url} - [${r.status}] - ${r.size}\n`
+  }, '')
 
   return {
     type,
@@ -132,9 +118,7 @@ module.exports = {
   typeFromUrl,
   getTypeSummary,
   getTypeSummaries,
-  getTotalSize,
   humanSize,
-  getTotalHumanSize,
   getResponseSize,
   getStatusCodeSummary,
   getStatusCodeObject,

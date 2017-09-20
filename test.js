@@ -31,19 +31,6 @@ test('human size (gb)', () => {
 	assertEquals(utils.humanSize(1200*1000*1000), '1.20 gb')
 })
 
-test('get total size', async (done) => {
-
-	const responses = [
-		{headers: {'content-length': 10}},
-		{headers: {'content-length': 20}},
-		{headers: {'content-length': 30}},
-	]
-
-	const size = await utils.getTotalSize(responses)
-	assertEquals(size, 60)
-	done()
-})
-
 test('get response size from header', async (done) => {
 	const r = {
 		headers: { 'content-length': 16}
@@ -56,22 +43,10 @@ test('get response size from header', async (done) => {
 test('get response size from buffer', async (done) => {
 	const r = {
 		headers: {},
-		buffer() { return Promise.resolve(new Buffer(16)) }
+		encodedDataLength() { return Promise.resolve(16) }
 	}
 	const size = await utils.getResponseSize(r) 
 	assertEquals(size, 16)
-	done()
-})
-
-test('get total size with buffers and headers', async (done) => {
-	const responses = [
-		{headers: {'content-length': 10}},
-		{headers: {'content-length': 20}},
-		{headers: {}, buffer() { return Promise.resolve(new Buffer(50))}},
-	]
-
-	const size = await utils.getTotalSize(responses)
-	assertEquals(size, 80)
 	done()
 })
 
@@ -123,14 +98,14 @@ test('single type summary', async (done) => {
   const responses = [
 		{url: 'style.css', status: 200, headers: {'content-length': 10}},
 		{url: 'custom.css', status: 300, headers: {'content-length': 20}},
-		{url: 'bootstrap.css', status: 400, headers: {}, buffer() { return Promise.resolve(new Buffer(50))}},
+		{url: 'bootstrap.css', status: 400, headers: {}, encodedDataLength() { return Promise.resolve(50)}},
 	]
   const type = 'Stylesheet'
   const summary = await utils.getTypeSummary(type, responses)
   const expected = {
     type,
     text: `style.css - [200] - 10\ncustom.css - [300] - 20\nbootstrap.css - [400] - 50\n`,
-    size: '80 b',
+    size: 80,
     count: 3,
   }
   assertEquals(summary.type, expected.type)

@@ -46,26 +46,27 @@ if (!pageURL) {
     timeout: 60000,
   });
 
-  // console.log("Loaded")
-  // console.log(await page.title())
+  console.log("Loaded", await page.title(),'\n')
 
   // TODO: if waitUntil === 'networkidle', subtract networTimeout from response time
   const duration = (+(new Date()) - startTime) / 1000 + ' s'
 
-  const totalSize = await utils.getTotalHumanSize(responses)
   const cookies = await page.cookies()
   const typeSummaries = await utils.getTypeSummaries(utils.TYPES, responses)
   const cookieSummary = utils.getCookieSummary(cookies)
   const statusCodeSummary = utils.getStatusCodeSummary(responses)
   const hostSummary = utils.getHostSummary(responses)
 
+  const totalSize = typeSummaries.reduce((agg, summary) => {
+      return agg + summary.size
+  }, 0)
 
   console.log("Summary\n-------\n")
   console.log("Load time", duration)
   console.log("# Cookies", cookies.length)
   console.log("# Requests", requests.length)
   console.log("# Responses", responses.length)
-  console.log("Total Size", totalSize)
+  console.log("Total Size", utils.humanSize(totalSize))
   console.log("\n-------\n")
 
   console.log(`### Requests per Host ###\n`)
@@ -82,7 +83,7 @@ if (!pageURL) {
 
   typeSummaries.forEach(s => {
     if (!s.text) return
-    console.log(`### ${s.type} (${s.count}) ###\n\n${s.text}\nSize: ${s.size}\n\n`)
+    console.log(`### ${s.type} (${s.count}) ###\n\n${s.text}\nSize: ${utils.humanSize(s.size)}\n\n`)
   })
 
   console.log("### Wappalyzer ###\n")
@@ -95,11 +96,9 @@ if (!pageURL) {
   const headers = responses.filter(r => r.status === 200)[0].headers  
   const detected = wappalyzer.analyze(h, pageURL, {headers, html})
   Object.keys(detected).forEach(d => {
-    
     console.log(d)
   })
   console.log()
-  console.log(JSON.stringify(detected))
   await browser.close()
 
 })()
